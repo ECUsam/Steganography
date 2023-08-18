@@ -5,4 +5,3 @@ if __name__ == "__main__":
     a.init_emb_func("Bque.jpg", '深圳杯数学建模挑战赛')
     a.test_info()
     a.embed(filename='test.jpg')
-    
