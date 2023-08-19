@@ -61,6 +61,7 @@ class text_core_function:
         if self.mode == 'str':
             byte = bin(int(self.wm_content.encode(self.encoding).hex(), base=16))[2:]
             self.wm_bit = (np.array(list(byte)) == '1')
+            print(len(self.wm_bit))
 
         np.random.RandomState(self.password).shuffle(self.wm_bit)
 
