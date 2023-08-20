@@ -55,6 +55,7 @@ class extractor(text_core_function):
         # plt.show()
 
         print(wm.replace('$$', '\n'))
+        return wm.replace('$$', '\n')
 
     def one_block_get_wm(self, args):
         block, shuffler = args

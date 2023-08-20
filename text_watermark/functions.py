@@ -53,7 +53,7 @@ def 出ていけ(text: str):
 
 
 class text_core_function:
-    def __init__(self, password=1, mode='str', encoding='gbk', length_ran=False, out_of_place=True):  # gbk编码省空间
+    def __init__(self, password=1, mode='str', encoding='gbk', length_ran=False, out_of_place=True, ratio=1):  # gbk编码省空间
         self.fast_mode = False
         self.wm_size = 0
         self.password = password
@@ -74,6 +74,7 @@ class text_core_function:
         self.pool = pool.AutoPool(mode='common', processes=None)
         self.length_ran = length_ran
         self.out = out_of_place
+        self.ratio = ratio
 
     def init_emb_func(self, filename, wm_content):
         self.img = read_img(filename).astype(np.float32)
@@ -83,7 +84,7 @@ class text_core_function:
         self.wm_cont_func()
         self.init_block_index()
         self.inited = True
-        return self.wm_size
+        return self.wm_size, self.wm_content
 
     # 目前仅仅提供字符串嵌入
     def wm_cont_func(self):
@@ -98,7 +99,7 @@ class text_core_function:
 
         if self.length_ran and self.wm_bit.size > self.block_num:
             print(self.wm_bit.size, self.block_num)
-            self.wm_content = to_limit_length(self.wm_content, self.block_num)
+            self.wm_content = to_limit_length(self.wm_content, self.block_num, self.ratio)
             print('舍弃后字符长度', len(self.wm_content))
             limit = string_to_binary(self.wm_content, self.encoding)
             print('嵌入长度', len(limit))
