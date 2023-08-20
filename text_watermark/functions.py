@@ -28,8 +28,32 @@ def random_strategy2(seed, size, block_shape):
     return np.repeat(one_line, repeats=size, axis=0)
 
 
+def string_to_binary(s, encoding='utf-8'):
+    # 首先，使用指定的编码将字符串转化为字节
+    byte_sequence = s.encode(encoding)
+    # 然后，将每一个字节转化为它的二进制表示，并连接在一起
+    return ''.join(format(byte, '08b') for byte in byte_sequence)
+
+
+def binary_to_string(binary_str, encoding='utf-8'):
+    # 分割二进制字符串为每8位一组
+    byte_strings = [binary_str[i:i + 8] for i in range(0, len(binary_str), 8)]
+    # 将每组二进制字符串转换为其对应的字节
+    byte_sequence = bytes([int(byte_str, 2) for byte_str in byte_strings])
+    # 使用指定的编码将字节序列解码为字符串
+    return byte_sequence.decode(encoding)
+
+
+def to_limit_length(text, hopped_length, ratio=1):
+    lenth = int(hopped_length/(16*ratio))
+    return text[:lenth]
+
+def 出ていけ(text: str):
+    return text.replace('\n', '$$').replace(' ', '')
+
+
 class text_core_function:
-    def __init__(self, password=1, mode='str', encoding='gbk'):  # gbk编码省空间
+    def __init__(self, password=1, mode='str', encoding='gbk', length_ran=False, out_of_place=True):  # gbk编码省空间
         self.fast_mode = False
         self.wm_size = 0
         self.password = password
@@ -48,24 +72,42 @@ class text_core_function:
         self.ll_part = [np.array([])] * 3  # 四维分块后，有时因不整除而少一部分，self.ca_part 是少这一部分的 self.ca
         self.d1, self.d2 = 36, 20  # d1/d2 越大鲁棒性越强,但输出图片的失真越大
         self.pool = pool.AutoPool(mode='common', processes=None)
+        self.length_ran = length_ran
+        self.out = out_of_place
 
     def init_emb_func(self, filename, wm_content):
         self.img = read_img(filename).astype(np.float32)
+
+        self.read_img_to_arr(self.img)
         self.wm_content = wm_content
         self.wm_cont_func()
-        self.read_img_to_arr(self.img)
+        self.init_block_index()
         self.inited = True
+        return self.wm_size
 
     # 目前仅仅提供字符串嵌入
     def wm_cont_func(self):
+        if self.out:
+            self.wm_content = 出ていけ(self.wm_content)
+
         if self.mode == 'str':
             byte = bin(int(self.wm_content.encode(self.encoding).hex(), base=16))[2:]
             self.wm_bit = (np.array(list(byte)) == '1')
-            print(len(self.wm_bit))
 
+        self.block_num = self.ll_block_shape[0] * self.ll_block_shape[1]
+
+        if self.length_ran and self.wm_bit.size > self.block_num:
+            print(self.wm_bit.size, self.block_num)
+            self.wm_content = to_limit_length(self.wm_content, self.block_num)
+            print('舍弃后字符长度', len(self.wm_content))
+            limit = string_to_binary(self.wm_content, self.encoding)
+            print('嵌入长度', len(limit))
+            print("已经舍去后面{}b信息".format(self.wm_bit.size - len(limit)))
+            self.wm_cont_func()
+            return
         np.random.RandomState(self.password).shuffle(self.wm_bit)
-
         self.wm_size = self.wm_bit.size
+
 
     def read_img_to_arr(self, img: numpy.ndarray):
         """
@@ -74,27 +116,30 @@ class text_core_function:
         self.img_YUV = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)  # Convert RGB to YUV
         """
 
-
         self.img_shape = img.shape[:2]
-        self.img_YUV = cv2.copyMakeBorder(cv2.cvtColor(img, cv2.COLOR_BGR2YUV),
-                                  0, img.shape[0] % 2, 0, img.shape[1] % 2,
-                                  cv2.BORDER_CONSTANT, value=(0, 0, 0))
 
+        self.img_YUV = cv2.copyMakeBorder(cv2.cvtColor(img, cv2.COLOR_BGR2YUV),
+                                          0, img.shape[0] % 2, 0, img.shape[1] % 2,
+                                          cv2.BORDER_CONSTANT, value=(0, 0, 0))
 
         self.ll_shape = [i // 2 for i in self.img_shape]
+
         self.ll_block_shape = (
             self.ll_shape[0] // self.block_shape[0], self.ll_shape[1] // self.block_shape[1], self.block_shape[0],
             self.block_shape[1])
+
         # 步长，跨越维度和元素需要的字节数
         strides = 4 * np.array([self.ll_shape[1] * self.block_shape[0], self.block_shape[1], self.ll_shape[1], 1])
+
         for channel in range(3):
             # 对每个通道进行小波变换
             self.ll[channel], self.hvd[channel] = dwt2(self.img_YUV[:, :, channel], 'haar')
+
             # 使用滑动窗口把ll部分一分为四
             self.ll_block[channel] = np.lib.stride_tricks.as_strided(self.ll[channel].astype(np.float32),
                                                                      self.ll_block_shape, strides)
-
-        self.init_block_index()
+        # ll_img = np.stack(self.ll, axis=2)
+        # cv2.imwrite('xiaobo.jpg', img=ll_img)
 
 
     def embed_func(self):
@@ -103,13 +148,16 @@ class text_core_function:
         embed_ca = copy.deepcopy(self.ll)
         embed_YUV = [np.array([])] * 3
         self.idx_shuffle = random_strategy1(self.password, self.block_num, self.block_shape[0] * self.block_shape[1])
+        print(self.block_num, self.block_shape[0] * self.block_shape[1])
 
         for channel in range(3):
             tmp = self.pool.map(self.block_add_wm,
                                 [(self.ll_block[channel][self.block_index[i]], self.idx_shuffle[i], i)
                                  for i in range(self.block_num)])
+
             for i in range(self.block_num):
                 self.ll_block[channel][self.block_index[i]] = tmp[i]
+
 
             # 4维分块变回2维
             self.ll_part[channel] = np.concatenate(np.concatenate(self.ll_block[channel], 1), 1)
@@ -127,13 +175,12 @@ class text_core_function:
         embed_img = np.clip(embed_img, a_min=0, a_max=255)
 
         return embed_img
-    
+
     def block_add_wm(self, arg):
         if self.fast_mode:
             return self.block_add_wm_fast(arg)
         else:
             return self.block_add_wm_slow(arg)
-
 
     def block_add_wm_fast(self, arg):
         # dct->svd->打水印->逆svd->逆dct
@@ -146,6 +193,7 @@ class text_core_function:
         return cv2.idct(np.dot(u, np.dot(np.diag(s), v)))
 
     def block_add_wm_slow(self, arg):
+        # 4x4
         block, shuffler, i = arg
         # dct->(flatten->加密->逆flatten)->svd->打水印->逆svd->(flatten->解密->逆flatten)->逆dct
         wm_1 = self.wm_bit[i % self.wm_size]
@@ -154,7 +202,9 @@ class text_core_function:
 
         # 加密（打乱顺序）
         block_dct_shuffled = block_dct.flatten()[shuffler].reshape(self.block_shape)
+
         u, s, v = svd(block_dct_shuffled)
+
         s[0] = (s[0] // self.d1 + 1 / 4 + 1 / 2 * wm_1) * self.d1
         if self.d2:
             s[1] = (s[1] // self.d2 + 1 / 4 + 1 / 2 * wm_1) * self.d2
@@ -186,7 +236,6 @@ class text_core_function:
         # self.part_shape 是取整后的ca二维大小,用于嵌入时忽略右边和下面对不齐的细条部分。
         self.part_shape = self.ll_block_shape[:2] * self.block_shape
         self.block_index = [(i, j) for i in range(self.ll_block_shape[0]) for j in range(self.ll_block_shape[1])]
-
 
 
     def test_info(self):
