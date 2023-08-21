@@ -48,18 +48,14 @@ if __name__ == "__main__":
         wm_content = f.read()
     compression_ratios, similarities = [], []
     for ratio in np.arange(1, 15, 1):
-        print('-----------------', compression_ratios)
         compression_ratios.append(ratio)
         wm, limit_wm = get_the_wm(wm_content, ratio)
-
         limit_wm = limit_wm.replace('$$', '\n')
         similarity = similarity_score(wm, limit_wm)
         similarities.append(similarity)
-    print(compression_ratios)
     # 绘制折线图
     plt.figure(figsize=(10, 6))
     plt.plot(compression_ratios, similarities, marker='o', linestyle='-', color='b')
-
     # 标题和标签
     plt.title("Similarity vs. Compression Ratio")
     plt.xlabel("Compression Ratio")
