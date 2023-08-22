@@ -27,8 +27,8 @@ def one_dim_kmeans(inputs):
 
 
 class extractor(text_core_function):
-    def __init__(self, encoding='gbk'):
-        super().__init__(encoding=encoding)
+    def __init__(self, encoding='gbk', mode='str'):
+        super().__init__(encoding=encoding, mode=mode)
 
         self.sss = []
 
@@ -40,7 +40,8 @@ class extractor(text_core_function):
         wm = self.extract_decrypt(wm_avg=wm_avg)
 
         byte = ''.join(str((i >= 0.5) * 1) for i in wm)
-        wm = bytes.fromhex(hex(int(byte, base=2))[2:]).decode(self.encoding, errors='replace')
+        self.byte_ = byte
+
 
         # idx = []
         # for i in range(len(self.sss)):
@@ -54,8 +55,13 @@ class extractor(text_core_function):
         # # 显示图形
         # plt.show()
 
-        print(wm.replace('$$', '\n'))
-        return wm.replace('$$', '\n')
+        # print(wm.replace('$$', '\n'))
+        if self.out:
+            wm = bytes.fromhex(hex(int(byte, base=2))[2:]).decode(self.encoding, errors='replace')
+            return wm.replace('$$', '\n')
+        else:
+            wm = bytes.fromhex(hex(int(byte, base=2))[2:])
+            return wm
 
     def one_block_get_wm(self, args):
         block, shuffler = args

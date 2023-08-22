@@ -63,7 +63,6 @@ class text_core_function:
         self.ll, self.hvd, = [np.array([])] * 3, [np.array([])] * 3  # ll为低频域，hvd是其他三个细节部分
         self.ll_block = [np.array([])] * 3  # 每个 channel 存一个四维 array，代表四维分块后的结果
         self.ll_part = [np.array([])] * 3  # 四维分块后，有时因不整除而少一部分，self.ca_part 是少这一部分的 self.ca
-        assert mode == 'str', '暂时不支持字符串以外的水印'
         self.mode = mode
         self.wm_content = None  # 水印内容
         self.wm_bit = None  # 字节水印
@@ -75,6 +74,8 @@ class text_core_function:
         self.length_ran = length_ran
         self.out = out_of_place
         self.ratio = ratio
+        if self.mode == 'byte':
+            self.out = False
 
     def init_emb_func(self, filename, wm_content):
         self.img = read_img(filename).astype(np.float32)
@@ -88,12 +89,18 @@ class text_core_function:
 
     # 目前仅仅提供字符串嵌入
     def wm_cont_func(self):
-        if self.out:
-            self.wm_content = 出ていけ(self.wm_content)
 
         if self.mode == 'str':
+            if self.out:
+                self.wm_content = 出ていけ(self.wm_content)
             byte = bin(int(self.wm_content.encode(self.encoding).hex(), base=16))[2:]
             self.wm_bit = (np.array(list(byte)) == '1')
+            self.byte = byte
+
+        elif self.mode == 'byte':
+            byte = bin(int(self.wm_content.hex(), base=16))[2:]
+            self.wm_bit = (np.array(list(byte)) == '1')
+            self.byte = byte
 
         self.block_num = self.ll_block_shape[0] * self.ll_block_shape[1]
 
@@ -106,6 +113,7 @@ class text_core_function:
             print("已经舍去后面{}b信息".format(self.wm_bit.size - len(limit)))
             self.wm_cont_func()
             return
+
         np.random.RandomState(self.password).shuffle(self.wm_bit)
         self.wm_size = self.wm_bit.size
 
@@ -149,7 +157,7 @@ class text_core_function:
         embed_ca = copy.deepcopy(self.ll)
         embed_YUV = [np.array([])] * 3
         self.idx_shuffle = random_strategy1(self.password, self.block_num, self.block_shape[0] * self.block_shape[1])
-        print(self.block_num, self.block_shape[0] * self.block_shape[1])
+        # print(self.block_num, self.block_shape[0] * self.block_shape[1])
 
         for channel in range(3):
             tmp = self.pool.map(self.block_add_wm,
@@ -230,10 +238,11 @@ class text_core_function:
 
     def init_block_index(self):
         self.block_num = self.ll_block_shape[0] * self.ll_block_shape[1]
-        print('水印大小', self.wm_size)
+        # print('水印大小', self.wm_size)
+
         assert self.wm_size < self.block_num, IndexError(
             '最多可嵌入{}kb信息，多于水印的{}kb信息，溢出'.format(self.block_num / 1000, self.wm_size / 1000))
-        print('最多可嵌入{}kb信息'.format(self.block_num / 1000))
+        # print('最多可嵌入{}kb信息'.format(self.block_num / 1000))
         # self.part_shape 是取整后的ca二维大小,用于嵌入时忽略右边和下面对不齐的细条部分。
         self.part_shape = self.ll_block_shape[:2] * self.block_shape
         self.block_index = [(i, j) for i in range(self.ll_block_shape[0]) for j in range(self.ll_block_shape[1])]

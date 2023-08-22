@@ -15,9 +15,9 @@ if __name__ == "__main__":
         wm = f.read()
 
     a = text_core_function(encoding='gbk', length_ran=True)
-    size = a.init_emb_func("Bque.jpg", wm)[0]
+    size = a.init_emb_func("Bque.jpg", "深圳杯数学建模挑战赛")[0]
 
     a.embed(filename='test1.jpg')
 
     ab = extractor(encoding='gbk')
-    ab.extract_form_file(filename='test1_NOISE_40.bmp', wm_shape=size)
+    ab.extract_form_file(filename='test1_NOISE_0.bmp', wm_shape=size)
