@@ -20,4 +20,5 @@ if __name__ == "__main__":
     a.embed(filename='test1.jpg')
 
     ab = extractor(encoding='gbk')
-    ab.extract_form_file(filename='test1_NOISE_0.bmp', wm_shape=size)
+    res = ab.extract_form_file(filename='test1.jpg', wm_shape=size)
+    print(res)

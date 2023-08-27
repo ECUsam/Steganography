@@ -209,10 +209,9 @@ class text_core_function:
 
         block_dct = cv2.dct(block)
 
-
-
         # 加密（打乱顺序）
         block_dct_shuffled = block_dct.flatten()[shuffler].reshape(self.block_shape)
+        # print(block_dct_shuffled)
 
         u, s, v = svd(block_dct_shuffled)
 
