@@ -209,6 +209,8 @@ class text_core_function:
 
         block_dct = cv2.dct(block)
 
+
+
         # 加密（打乱顺序）
         block_dct_shuffled = block_dct.flatten()[shuffler].reshape(self.block_shape)
 
@@ -241,8 +243,8 @@ class text_core_function:
         # print('水印大小', self.wm_size)
 
         assert self.wm_size < self.block_num, IndexError(
-            '最多可嵌入{}kb信息，多于水印的{}kb信息，溢出'.format(self.block_num / 1000, self.wm_size / 1000))
-        # print('最多可嵌入{}kb信息'.format(self.block_num / 1000))
+            '最多可嵌入{}kb信息，多于水印的{}kb信息，溢出'.format(self.block_num / 1024, self.wm_size / 1024))
+        # print('最多可嵌入{}kb信息'.format(self.block_num))
         # self.part_shape 是取整后的ca二维大小,用于嵌入时忽略右边和下面对不齐的细条部分。
         self.part_shape = self.ll_block_shape[:2] * self.block_shape
         self.block_index = [(i, j) for i in range(self.ll_block_shape[0]) for j in range(self.ll_block_shape[1])]

@@ -24,8 +24,6 @@ def one_dim_kmeans(inputs):
     return is_class01
 
 
-
-
 class extractor(text_core_function):
     def __init__(self, encoding='gbk', mode='str'):
         super().__init__(encoding=encoding, mode=mode)
@@ -41,7 +39,6 @@ class extractor(text_core_function):
 
         byte = ''.join(str((i >= 0.5) * 1) for i in wm)
         self.byte_ = byte
-
 
         # idx = []
         # for i in range(len(self.sss)):

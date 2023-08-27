@@ -9,6 +9,7 @@ import os
 if not os.path.exists('output'):
     os.mkdir('output')
 
+
 def bit_minus(row_bit, aft_bit):
     assert len(row_bit) == len(aft_bit), "比特长度不同"
     n_ = 0
@@ -24,11 +25,11 @@ def jpeg_compress(input_filename, output_filename, quality=95):
         raise ValueError(f"Failed to load image {input_filename}")
     cv2.imwrite(output_filename, img, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
 
+
 a = text_core_function(encoding='gbk', length_ran=True)
 size = a.init_emb_func("Bque.jpg", "深圳杯数学建模挑战赛")[0]
 a.embed(filename='output/test_attack.jpg')
 byte = a.byte
-
 
 ori_img_shape = cv2.imread('Bque.jpg').shape[:2]
 h, w = ori_img_shape
@@ -39,18 +40,17 @@ byte_aft = ab.byte_
 minus = bit_minus(byte, byte_aft)
 print("不攻击的提取结果：", wm_extract, "比特差：", minus)
 
-
 # %%截屏攻击1 = 裁剪攻击 + 缩放攻击 + 知道攻击参数（之后按照参数还原）
 
-loc_r = ((0.01, 0.01), (1, 0.8))
-scale = 0.7
+loc_r = ((0, 0), (1, 1))
+scale = 0.5
 
 x1, y1, x2, y2 = int(w * loc_r[0][0]), int(h * loc_r[0][1]), int(w * loc_r[1][0]), int(h * loc_r[1][1])
 # print(x1, y1, x2, y2)
 
 # 截屏攻击
 attack.cut_att3(input_filename='output/test_attack.jpg', output_file_name='output/attacked1.png',
-             loc=(x1, y1, x2, y2), scale=scale)
+                loc=(x1, y1, x2, y2), scale=scale)
 
 recover_crop(template_file='output/attacked1.png', output_file_name='output/attacked1_recover.png',
              loc=(x1, y1, x2, y2), image_o_shape=ori_img_shape)
@@ -69,7 +69,7 @@ x1, y1, x2, y2 = int(w * loc_r[0][0]), int(h * loc_r[0][1]), int(w * loc_r[1][0]
 
 # print(f'Crop attack\'s real parameters: x1={x1},y1={y1},x2={x2},y2={y2}')
 attack.cut_att3(input_filename='output/test_attack.jpg', output_file_name='output/attacked2.png',
-             loc=(x1, y1, x2, y2), scale=scale)
+                loc=(x1, y1, x2, y2), scale=scale)
 
 # estimate crop attack parameters:
 (x1, y1, x2, y2), image_o_shape, score, scale_infer = estimate_crop_parameters(original_file='output/test_attack.jpg',
@@ -93,7 +93,7 @@ loc_r = ((0.01, 0.01), (0.98, 0.75))
 x1, y1, x2, y2 = int(w * loc_r[0][0]), int(h * loc_r[0][1]), int(w * loc_r[1][0]), int(h * loc_r[1][1])
 
 attack.cut_att3(input_filename='output/test_attack.jpg', output_file_name='output/random_attacked.png',
-             loc=(x1, y1, x2, y2), scale=None)
+                loc=(x1, y1, x2, y2), scale=None)
 # recover from attack:
 recover_crop(template_file='output/random_attacked.png', output_file_name='output/random_attacked_recover.png',
              loc=(x1, y1, x2, y2), image_o_shape=image_o_shape)
@@ -105,11 +105,11 @@ minus = bit_minus(byte, byte_aft)
 print("裁剪攻击，知道攻击参数。提取结果：", wm_extract, "比特差：", minus)
 
 # %% 裁剪攻击2 = 裁剪 + 不做缩放 + 不知道攻击参数
-loc_r = ((0.02, 0.01), (0.98, 0.75))
+loc_r = ((0.00, 0.00), (1, 0.75))
 x1, y1, x2, y2 = int(w * loc_r[0][0]), int(h * loc_r[0][1]), int(w * loc_r[1][0]), int(h * loc_r[1][1])
 
 attack.cut_att3(input_filename='output/test_attack.jpg', output_file_name='output/random_attacked2.png',
-             loc=(x1, y1, x2, y2), scale=None)
+                loc=(x1, y1, x2, y2), scale=None)
 # print(f'Cut attack\'s real parameters: x1={x1},y1={y1},x2={x2},y2={y2}')
 
 # estimate crop attack parameters:
@@ -151,7 +151,7 @@ minus = bit_minus(byte, byte_aft)
 print(f"旋转攻击angle={angle}后的提取结果：", wm_extract, "比特差：", minus)
 
 # %%遮挡攻击
-n = 58
+n = 70
 attack.shelter_att(input_filename='output/test_attack.jpg', output_file_name='output/shelter.png', ratio=0.1, n=n)
 wm_extract = ab.extract_form_file(filename='output/shelter.png', wm_shape=size)
 byte_aft = ab.byte_
@@ -159,14 +159,15 @@ minus = bit_minus(byte, byte_aft)
 print(f"遮挡攻击{n}次后的提取结果：", wm_extract, "比特差：", minus)
 
 # %%缩放攻击
-attack.resize_att(input_filename='output/test_attack.jpg', output_file_name='output/resize_att.png', out_shape=(400, 600))
+attack.resize_att(input_filename='output/test_attack.jpg', output_file_name='output/resize_att.png',
+                  out_shape=(400, 600))
 attack.resize_att(input_filename='output/resize_att.png', output_file_name='output/resize_att_recover.png',
-               out_shape=ori_img_shape[::-1])
+                  out_shape=ori_img_shape[::-1])
 # out_shape 是分辨率，需要颠倒一下
 wm_extract = ab.extract_form_file(filename='output/resize_att_recover.png', wm_shape=size)
 byte_aft = ab.byte_
 minus = bit_minus(byte, byte_aft)
-print("缩放攻击后的提取结果：",  wm_extract, "比特差：", minus)
+print("缩放攻击后的提取结果：", wm_extract, "比特差：", minus)
 
 # %%亮度攻击
 
@@ -177,14 +178,8 @@ byte_aft = ab.byte_
 minus = bit_minus(byte, byte_aft)
 print("亮度攻击后的提取结果：", wm_extract, "比特差：", minus)
 
-
-jpeg_compress('output/test_attack.jpg', 'jpeg_com.jpeg', 70)
+jpeg_compress('output/test_attack.jpg', 'jpeg_com.jpeg', 60)
 wm_extract = ab.extract_form_file(filename='jpeg_com.jpeg', wm_shape=size)
 byte_aft = ab.byte_
 minus = bit_minus(byte, byte_aft)
 print("压缩攻击。提取结果：", wm_extract, "比特差：", minus)
-
-
-
-
-
